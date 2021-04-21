@@ -16,9 +16,16 @@ function civicrm_api3_contact_normalize($params) {
     foreach ($contacts as &$contact) {
       $normalize->normalize_contact($contact);
     }
+    return civicrm_api3_create_success($contacts);
   }
   if (!empty($params['contact_id'])) {
-    $normalize->normalize_contact($params['contact_id']);
+    $contact = civicrm_api3('Contact', 'getsingle', [
+      'id' => $params['contact_id'],
+    ]);
+    $normalize->normalize_contact($contact);
+    civicrm_api3('Contact', 'create', $contact);
+    return civicrm_api3_create_success($contact);
   }
-  return civicrm_api3_create_success($contacts);
+
+  throw new Exception("Missing params contacts or contact_id");
 }
