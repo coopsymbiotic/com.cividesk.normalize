@@ -17,5 +17,8 @@ function civicrm_api3_contact_normalize($params) {
       $normalize->normalize_contact($contact);
     }
   }
+  if (!empty($params['contact_id'])) {
+    $normalize->normalize_contact($params['contact_id']);
+  }
   return civicrm_api3_create_success($contacts);
 }
