@@ -61,20 +61,25 @@ class CRM_Utils_Normalize {
    */
   static function getSettings($name = NULL) {
     if (!empty($name)) {
-      return CRM_Core_BAO_Setting::getItem(CRM_Utils_Normalize::NORMALIZE_PREFERENCES_NAME, $name);
+      return Civi::settings()->get($name);
     }
-    // group name not used anymore, so fetch only normalization related setting (also suppress warning)
-    $settingsField = array('contact_FullFirst', 'contact_OrgCaps', 'phone_normalize',
-      'phone_IntlPrefix', 'address_CityCaps', 'address_StreetCaps', 'address_Zip', 'normalization_stats', 'address_postal_validation');
-    $settings = array();
+    $settingsField = [
+      'contact_FullFirst', 'contact_OrgCaps', 'phone_normalize',
+      'phone_IntlPrefix', 'address_CityCaps', 'address_StreetCaps',
+      'address_Zip', 'normalization_stats', 'address_postal_validation',
+    ];
+    $settings = [];
     foreach ($settingsField as $fieldName) {
-      $settings[$fieldName] = CRM_Core_BAO_Setting::getItem(CRM_Utils_Normalize::NORMALIZE_PREFERENCES_NAME, $fieldName);
+      $settings[$fieldName] = Civi::settings()->get($fieldName);
     }
     return $settings;
   }
 
+  /**
+   * @deprecated
+   */
   static function setSetting($value, $name) {
-    CRM_Core_BAO_Setting::setItem($value, CRM_Utils_Normalize::NORMALIZE_PREFERENCES_NAME, $name);
+    Civi::settings()->set($name, $value);
   }
 
   /**

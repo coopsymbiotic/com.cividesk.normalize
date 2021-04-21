@@ -167,11 +167,11 @@ class CRM_Admin_Form_Setting_Normalize extends CRM_Admin_Form_Setting {
     foreach ($this->_elementIndex as $key => $dontcare) {
       $prefix = explode('_', $key);
       $prefix = reset($prefix);
-      if (in_array($prefix, array('contact', 'phone', 'address'))) {
-        CRM_Utils_Normalize::setSetting(CRM_Utils_Array::value($key, $params, 0), $key);
+      if (in_array($prefix, ['contact', 'phone', 'address'])) {
+        Civi::settings()->set($key, $params[$key] ?? 0);
       }
     }
-  } //end of function
+  }
 
   static function getRunner($skipEndUrl = FALSE, $fromContactId, $toContactId, $batchSize) {
     // Setup the Queue
@@ -181,7 +181,11 @@ class CRM_Admin_Form_Setting_Normalize extends CRM_Admin_Form_Setting {
       'reset' => TRUE,
     ));
 
-    CRM_Utils_Normalize::setSetting(array('contact' => 0, 'phone' => 0, 'address' => 0), 'normalization_stats');
+    Civi::settings()->set('normalization_stats', [
+      'contact' => 0,
+      'phone' => 0,
+      'address' => 0,
+    ]);
 
     for ($startId = $fromContactId; $startId <= $toContactId; $startId += $batchSize) {
       $endId = $startId + $batchSize - 1;
@@ -225,11 +229,11 @@ class CRM_Admin_Form_Setting_Normalize extends CRM_Admin_Form_Setting {
   * Update the push stats setting.
   */
   static function updatePushStats($updates) {
-    $stats = CRM_Utils_Normalize::getSettings('normalization_stats');
+    $stats = Civi::settings()->get('normalization_stats');
     foreach ($updates as $name => $value) {
       $stats[$name] += $value;
     }
-    CRM_Utils_Normalize::setSetting($stats, 'normalization_stats');
+    Civi::settings()->set('normalization_stats', $stats);
   }
 
-} // end class
+}
