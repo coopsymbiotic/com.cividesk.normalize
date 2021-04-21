@@ -51,14 +51,8 @@ class CRM_Admin_Form_Setting_Normalize extends CRM_Admin_Form_Setting {
     $this->applyFilter('__ALL__', 'trim');
     $this->assign('default_country', ($this->_country != NULL));
 
-    $this->add('checkbox',
-      'contact_FullFirst',
-      ts('Capitalize first letter of each word in all names')
-    );
-    $this->add('checkbox',
-      'contact_OrgCaps',
-      ts('Capitalize organization names')
-    );
+    $this->add('checkbox', 'contact_FullFirst', ts('Capitalize the first letter of each word in all individual names (first, last, nickname)'));
+    $this->add('checkbox', 'contact_OrgCaps', ts('Capitalize the first letter of organization names, but allow ALLCAPS names (org name, legal name, nickname)'));
 
     $this->add('checkbox',
       'phone_normalize',

@@ -31,7 +31,8 @@ class CRM_Utils_Normalize {
 
   private $_settings;
   private $_country;
-  private $_nameFields;
+  private $_individualNameFields;
+  private $_orgNameFields;
   private $_phoneFields;
   private $_addressFields;
 
@@ -48,12 +49,14 @@ class CRM_Utils_Normalize {
    */
   public function __construct() {
     $this->_settings = $this->getSettings();
+
     // Get the default country information for phone/zip formatting
     $this->_country = CRM_Core_BAO_Country::defaultContactCountry();
 
-    $this->_nameFields = array('first_name', 'middle_name', 'last_name', 'organization_name', 'household_name', 'legal_name', 'nick_name');
-    $this->_phoneFields = array('phone');
-    $this->_addressFields = array('city', 'postal_code');
+    $this->_individualNameFields = ['first_name', 'middle_name', 'last_name', 'nick_name'];
+    $this->_orgNameFields = ['organization_name', 'household_name', 'legal_name', 'nick_name'];
+    $this->_phoneFields = ['phone'];
+    $this->_addressFields = ['city', 'postal_code'];
   }
 
   /**
@@ -101,88 +104,108 @@ class CRM_Utils_Normalize {
    *   Name that needs to be normalized
    */
   function normalize_contact(&$contact) {
-    $handles = array(
+    if ($contact['contact_type'] == 'Individual' && Civi::settings()->get('contact_FullFirst')) {
+      foreach ($this->_individualNameFields as $field) {
+        if (!empty($contact[$field])) {
+          $contact[$field] = $this->normalize_name_field($contact[$field], 'Individual');
+        }
+      }
+    }
+
+    if ($contact['contact_type'] == 'Organization' && Civi::settings()->get('contact_OrgCaps')) {
+      foreach ($this->_orgNameFields as $field) {
+        if (!empty($contact[$field])) {
+          $contact[$field] = $this->normalize_name_field($contact[$field], 'Organization');
+        }
+      }
+    }
+
+    return TRUE;
+  }
+
+  /**
+   *
+   */
+  function normalize_name_field($name, $contact_type) {
+    // Handle null value during Contact Merge
+    if (empty($name) || ($name === "null")) {
+      return;
+    }
+
+    $handles = [
       'de', 'des', 'la', // France
       'da', 'den', 'der', 'ten', 'ter', 'van', // Neederlands
       'von', // Germany
       'et', 'and', 'und', // For company names
       'dos', 'das', 'do', 'du',
       "s" // skip apostrophe s
-    );
+    ];
 
-    // These will be small
-    $orgHandles = array(
+    // These will be lowercase
+    $orgHandles = [
       'of'
-    );
+    ];
 
-    // These will be capitalized
-    $orgstatus = array(
+    // These will be uppercase
+    $orgstatus = [
       'llc', 'llp', 'pllc', 'lp', 'pc', // USA
       'sa', 'sarl', 'sc', 'sci', // France
       'fze', 'fz', 'fz-llc', 'fz-co', 'rak', // UAE
       'usa', 'uae',
-    );
-    // These will be Firstcaped with a dot at the end
-    $orgstatusSpecial = array( 'inc', 'co', 'corp', 'ltd' );
-    
-    $delimiters = array( "-", ".", "D'", "O'", "Mc", " ",);
+    ];
 
-    if (CRM_Utils_Array::value('contact_FullFirst', $this->_settings)) {
-      foreach ($this->_nameFields as $field) {
-        $name = CRM_Utils_Array::value($field, $contact);
-        //Handle null value during Contact Merge
-        if (empty($name) || ($name === "null")) {
-          continue;
-        }
-        ///$name = mb_convert_case($name, MB_CASE_TITLE, "UTF-8");
-        foreach ($delimiters as $delimiter) {
-          $words = explode($delimiter, $name);
-          $newWords = array();
-          foreach ($words as $word) {
-            if ( CRM_Utils_Array::value('contact_type', $contact) == 'Organization') {
-              // Capitalize organization statuses
-              // in_array is case sensitive, lower case the $word
-              if ( in_array(str_replace(array('.'), '', mb_strtolower($word)), $orgstatus) ) {
-                $word = mb_strtoupper($word);
-              } else if ( in_array(str_replace(array('.'), '', strtolower($word)), $orgstatusSpecial) ) {
-                // special status only need first letter to be capitalize
-                $word = str_replace(array('.'), '', strtolower($word)) . '.';
-              } else if (in_array(strtolower($word), $orgHandles)) {
-                 // lower case few matching word for Organization contact
-                 $word = mb_strtolower($word);
-               }
-            }
-            elseif ( CRM_Utils_Array::value('contact_type', $contact) == 'Individual') {
-               // lower case few matching word for individual contact
-               if (in_array(mb_strtolower($word), $handles)) {
-                 $word = mb_strtolower($word);
-               }
-            }
-            if (!in_array($word, $handles) && !in_array($word, $orgHandles)) {
-              $word = ucfirst($word);
-            }
-            array_push($newWords, $word);
+    $delimiters = ["-", ".", "D'", "O'", "Mc", " "];
+
+    // These will be Firstcaped with a dot at the end
+    $orgstatusSpecial = ['inc', 'co', 'corp', 'ltd'];
+
+    foreach ($delimiters as $delimiter) {
+      $words = explode($delimiter, $name);
+      $newWords = [];
+
+      foreach ($words as $word) {
+        if ($contact_type == 'Organization') {
+          // Capitalize organization statuses
+          // in_array is case sensitive, lower case the $word
+          if (in_array(str_replace(array('.'), '', mb_strtolower($word)), $orgstatus)) {
+            $word = mb_strtoupper($word);
           }
-          $name = join($delimiter, $newWords);
-          if (CRM_Utils_Array::value('contact_type', $contact) == 'Individual') {
-            // if name is matching handles, then normalize it
-            if (in_array(strtolower($name), $handles)) {
-              $name = ucwords(strtolower($name));
-            }
+          elseif (in_array(str_replace(array('.'), '', strtolower($word)), $orgstatusSpecial)) {
+            // special status only need first letter to be capitalize
+            $word = str_replace(array('.'), '', strtolower($word)) . '.';
+          }
+          elseif (in_array(strtolower($word), $orgHandles)) {
+            // lower case few matching word for Organization contact
+            $word = mb_strtolower($word);
+          }
+          if (!in_array($word, $handles) && !in_array($word, $orgHandles)) {
+            // We do not strtolower org names because they could be allcaps abbreviations
+            $word = ucfirst($word);
           }
         }
-        $contact[$field] = $name;
-        
+        elseif ($contact_type == 'Individual') {
+          // lowercase few matching word for individual contact
+          if (in_array(mb_strtolower($word), $handles)) {
+            $word = mb_strtolower($word);
+          }
+          if (!in_array($word, $handles) && !in_array($word, $orgHandles)) {
+            $word = ucfirst(mb_strtolower($word));
+          }
+        }
+        array_push($newWords, $word);
+      }
+
+      $name = join($delimiter, $newWords);
+
+      if ($contact_type == 'Individual') {
+        // if name is matching handles, then normalize it
+        if (in_array(mb_strtolower($name), $handles)) {
+          $name = ucwords(strtolower($name));
+        }
       }
     }
-    if (CRM_Utils_Array::value('contact_OrgCaps', $this->_settings)) {
-      if ((CRM_Utils_Array::value('contact_type', $contact) == 'Organization')
-        && CRM_Utils_Array::value('organization_name', $contact)
-      ) {
-        $contact['organization_name'] = strtoupper($contact['organization_name']);
-      }
-    }
-    return TRUE;
+
+    return $name;
   }
 
   /**
@@ -421,7 +444,7 @@ class CRM_Utils_Normalize {
   }
 
   function getNameFields() {
-    return $this->_nameFields;
+    return $this->_individualNameFields + $this->_orgNameFields;
   }
 
   function getAddressFields() {
@@ -475,19 +498,21 @@ class CRM_Utils_Normalize {
     }
 
     $contactIds = range($fromContactId, $toContactId);
-
     $normalization = CRM_Utils_Normalize::singleton();
+    $formattedContactIds = $formattedPhoneIds = $formattedAddressIds = [];
 
-    $formattedContactIds = $formattedPhoneIds = $formattedAddressIds = array();
     foreach ($contactIds as $contactId) {
       $contact = new CRM_Contact_DAO_Contact();
       $contact->id = $contactId;
+
       if ($contact->find()) {
         $params = array('id' => $contactId, 'contact_id' => $contactId);
-        $orgContactValues = array();
+        $orgContactValues = [];
         CRM_Contact_BAO_Contact::retrieve($params, $orgContactValues);
-        //update contacts name fields.
-        $formatNameValues = array();
+
+        // Update contacts name fields.
+        $formatNameValues = [];
+
         foreach ($normalization->getNameFields() as $field) {
           $nameValue = CRM_Utils_Array::value($field, $orgContactValues);
           if (empty($nameValue)) {
@@ -495,15 +520,17 @@ class CRM_Utils_Normalize {
           }
           $formatNameValues[$field] = $nameValue;
         }
+
         if (!empty($formatNameValues)) {
           $formatNameValues['contact_type'] = $orgContactValues['contact_type'];
           $formattedNameValues = $formatNameValues;
 
-          //format name values
+          // Format name values
           $normalization->normalize_contact($formattedNameValues);
 
-          //check formatted diff, only update if there is difference.
+          // Check formatted diff, only update if there is difference.
           $formatDiff = array_diff($formatNameValues, $formattedNameValues);
+
           if (!empty($formatDiff)) {
             $formattedNameValues['id'] = $formattedNameValues['contact_id'] = $orgContactValues['id'];
             $formattedNameValues['contact_type'] = $orgContactValues['contact_type'];
