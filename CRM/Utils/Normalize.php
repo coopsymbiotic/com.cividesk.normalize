@@ -189,7 +189,9 @@ class CRM_Utils_Normalize {
             $word = mb_strtolower($word);
           }
           if (!in_array($word, $handles) && !in_array($word, $orgHandles)) {
-            $word = ucfirst(mb_strtolower($word));
+            // Based on: https://github.com/cividesk/com.cividesk.normalize/commit/267065a0985fd77a769e995c1f4acf900cad0b9d
+            // Fixes composed named, ex: Jane Doe-Tremblay
+            $word = ucwords(mb_strtolower($word), "-'");
           }
         }
         array_push($newWords, $word);
