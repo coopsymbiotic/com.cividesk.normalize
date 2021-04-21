@@ -316,7 +316,9 @@ class CRM_Utils_Normalize {
     // Reformat postal code ONLY FOR CA
     if (CRM_Utils_Array::value('address_Zip', $this->_settings)) {
       // http://www.pidm.net/postal%20code.html: there are currently no examples of postal codes written with lower-case letters
-      $address['postal_code'] = strtoupper($address['postal_code']);
+      if (!empty($address['postal_code'])) {
+        $address['postal_code'] = strtoupper($address['postal_code']);
+      }
 
       if ($country == 'CA' && ($zip = CRM_Utils_Array::value('postal_code', $address))) {
         if ($regex = CRM_Utils_Array::value($country, $zip_formats)) {
