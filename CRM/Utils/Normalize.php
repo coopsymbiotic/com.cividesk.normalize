@@ -142,23 +142,24 @@ class CRM_Utils_Normalize {
             if ( CRM_Utils_Array::value('contact_type', $contact) == 'Organization') {
               // Capitalize organization statuses
               // in_array is case sensitive, lower case the $word
-              if ( in_array(str_replace(array('.'), '', strtolower($word)), $orgstatus) ) {
-                $word = strtoupper($word);
+              if ( in_array(str_replace(array('.'), '', mb_strtolower($word)), $orgstatus) ) {
+                $word = mb_strtoupper($word);
               } else if ( in_array(str_replace(array('.'), '', strtolower($word)), $orgstatusSpecial) ) {
                 // special status only need first letter to be capitalize
                 $word = str_replace(array('.'), '', strtolower($word)) . '.';
               } else if (in_array(strtolower($word), $orgHandles)) {
                  // lower case few matching word for Organization contact
-                 $word = strtolower($word);
+                 $word = mb_strtolower($word);
                }
-            } elseif ( CRM_Utils_Array::value('contact_type', $contact) == 'Individual') {
+            }
+            elseif ( CRM_Utils_Array::value('contact_type', $contact) == 'Individual') {
                // lower case few matching word for individual contact
-               if (in_array(strtolower($word), $handles)) {
-                 $word = strtolower($word);
+               if (in_array(mb_strtolower($word), $handles)) {
+                 $word = mb_strtolower($word);
                }
             }
             if (!in_array($word, $handles) && !in_array($word, $orgHandles)) {
-              $word = ucfirst(mb_strtolower($word));
+              $word = ucfirst($word);
             }
             array_push($newWords, $word);
           }
